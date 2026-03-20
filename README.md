@@ -87,26 +87,23 @@ You can rename those fields via:
 }
 ```
 
-## Chat widget (LLM iframe embed)
-If you already have a public chat UI URL (for example an n8n public chat page), you can enable a floating chat icon on the rendered HTML page.
+## Chat widget (direct webhook)
+If you have a public n8n chat webhook URL, you can enable a floating chat icon on the rendered HTML page.
 
 When enabled:
 - a chat icon is shown on the page
-- clicking the icon opens an iframe containing your public chat URL
-- closing is handled by the widget UI (and your iframe can also trigger open/close via `postMessage`)
+- clicking the icon opens a chat widget
+- messages are sent directly from the page to your webhook (no iframe needed)
 
 Settings:
-- `Chat Widget (iframe embed) → Enable Chat Widget`
-- `Chat Widget (iframe embed) → Public Chat URL (iframe src)`
-- `Chat Widget (iframe embed) → Chat Widget Height (px)`
+- `Chat Widget (direct webhook) → Enable Chat Widget`
+- `Chat Widget (direct webhook) → Public Chat Webhook URL`
+- `Chat Widget (direct webhook) → Chat Widget Height (px)`
 
-PostMessage integration (optional):
-- Sent to the iframe by the renderer:
-  - `ui-renderer:chatWidgetOpened`
-  - `ui-renderer:chatWidgetClosed`
-- If your embedded chat UI listens to messages, you can also control the widget:
-  - `ui-renderer:chatWidgetOpen`
-  - `ui-renderer:chatWidgetClose`
+The widget uses `POST` to your webhook with a JSON payload containing:
+- `sessionId`
+- `message`
+- `chatInput`
 
 ## Safety
 - Dynamic values are HTML-escaped by default (safer for untrusted data).

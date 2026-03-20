@@ -111,7 +111,7 @@ const BASE_PROPERTIES: INodeProperties[] = [
 			{ name: 'Chart', value: 'chart' },
 			{ name: 'Section Text', value: 'sectionText' },
 			{ name: 'Chat', value: 'chat' },
-			{ name: 'LLM Chat (iframe embed)', value: 'chatEmbed' },
+			{ name: 'LLM Chat Widget (webhook)', value: 'chatEmbed' },
 		],
 	},
 	{
@@ -572,12 +572,12 @@ const BASE_PROPERTIES: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Chat Widget (iframe embed)',
+		displayName: 'Chat Widget (direct webhook)',
 		name: 'chatWidgetUi',
 		type: 'collection',
 		placeholder: 'Add option',
 		default: {},
-		description: 'Optional chat launcher icon that opens an embedded public chat in an iframe.',
+				description: 'Optional chat launcher icon that opens an embedded chat widget powered by your public n8n webhook.',
 		displayOptions: { show: { uxConfigMode: ['pro'] } },
 		options: [
 			{
@@ -588,11 +588,11 @@ const BASE_PROPERTIES: INodeProperties[] = [
 				description: 'Shows a chat icon on the page and opens the iframe when clicked.',
 			},
 			{
-				displayName: 'Public Chat URL (iframe src)',
+				displayName: 'Public Chat Webhook URL',
 				name: 'url',
 				type: 'string',
 				default: '',
-				description: 'Public https/http URL to embed (must be http/https).',
+				description: 'Public https/http URL of your n8n chat webhook endpoint (must be http/https).',
 			},
 			{
 				displayName: 'Chat Widget Height (px)',
@@ -2651,11 +2651,74 @@ function buildChatWidgetCss(context: IRenderContext): string {
 			justify-content: center;
 		}
 		.ui-chat-widget-iframe {
-			border: none;
-			width: 100%;
+			display: none;
+		}
+		.ui-chat-widget-messages {
 			flex: 1 1 auto;
 			min-height: 0;
-			background: transparent;
+			overflow: auto;
+			padding: 12px;
+			background: rgba(148, 163, 184, 0.06);
+		}
+		.ui-chat-widget-composer {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			padding: 10px 12px;
+			border-top: 1px solid rgba(148, 163, 184, 0.25);
+			background: rgba(255,255,255,0.02);
+		}
+		.ui-chat-widget-input {
+			flex: 1 1 auto;
+			min-width: 0;
+			border: 1px solid rgba(148, 163, 184, 0.35);
+			border-radius: 12px;
+			padding: 10px 12px;
+			background: var(--ui-bg);
+			color: var(--ui-text);
+			font-family: inherit;
+			font-size: 0.95rem;
+			outline: none;
+		}
+		.ui-chat-widget-input:focus {
+			border-color: rgba(37, 99, 235, 0.55);
+			box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+		}
+		.ui-chat-widget-send {
+			border: none;
+			border-radius: 12px;
+			padding: 10px 12px;
+			background: var(--ui-accent);
+			color: #ffffff;
+			font-weight: 800;
+			cursor: pointer;
+			white-space: nowrap;
+		}
+		.ui-chat-widget-send:disabled {
+			opacity: 0.7;
+			cursor: not-allowed;
+		}
+		.ui-chat-widget-row {
+			display: flex;
+			margin-bottom: 10px;
+		}
+		.ui-chat-widget-row--user { justify-content: flex-end; }
+		.ui-chat-widget-row--assistant { justify-content: flex-start; }
+		.ui-chat-widget-bubble {
+			max-width: 92%;
+			border-radius: calc(var(--ui-radius) + 6px);
+			padding: 10px 12px;
+			border: 1px solid rgba(148, 163, 184, 0.35);
+			background: var(--ui-card-bg);
+			color: var(--ui-text);
+			line-height: 1.4;
+			white-space: pre-wrap;
+			word-break: break-word;
+		}
+		.ui-chat-widget-bubble--user {
+			background: var(--ui-accent);
+			color: #ffffff;
+			border-color: rgba(0,0,0,0);
 		}
 	`;
 }
@@ -2689,59 +2752,148 @@ function renderChatWidgetEmbed(context: IRenderContext): string {
 				</svg>
 			</button>
 		</div>
-		<iframe
-			id="ui-chat-widget-iframe"
-			class="ui-chat-widget-iframe"
-			src="${escapeHtmlStrict(context.chatWidget.url)}"
-			loading="lazy"
-			sandbox="allow-scripts allow-forms allow-popups allow-modals"
-			referrerpolicy="no-referrer"
-		></iframe>
+		<div class="ui-chat-widget-messages" id="ui-chat-widget-messages"></div>
+		<form class="ui-chat-widget-composer" id="ui-chat-widget-form">
+			<input
+				class="ui-chat-widget-input"
+				id="ui-chat-widget-input"
+				name="message"
+				type="text"
+				autocomplete="off"
+				spellcheck="true"
+				placeholder="Type your message…"
+			/>
+			<button class="ui-chat-widget-send" id="ui-chat-widget-send" type="submit">Send</button>
+		</form>
 	</div>
 	`;
 }
 
 function buildChatWidgetEmbedScript(context: IRenderContext): string {
-	const allowedOrigin = context.chatWidget.allowedOrigin ? escapeJsString(context.chatWidget.allowedOrigin) : '';
 	return `
 	<script>
 	(() => {
 		const launcher = document.getElementById('ui-chat-widget-launcher');
 		const panel = document.getElementById('ui-chat-widget-panel');
 		const closeBtn = document.getElementById('ui-chat-widget-close');
-		const iframe = document.getElementById('ui-chat-widget-iframe');
-		if (!launcher || !panel || !closeBtn || !iframe) return;
-
-		const allowedOrigin = ${allowedOrigin ? `'${allowedOrigin}'` : "''"};
+			const messages = document.getElementById('ui-chat-widget-messages');
+			const form = document.getElementById('ui-chat-widget-form');
+			const input = document.getElementById('ui-chat-widget-input');
+			const sendBtn = document.getElementById('ui-chat-widget-send');
+			if (!launcher || !panel || !closeBtn || !messages || !form || !input || !sendBtn) return;
 
 		const setOpen = (open) => {
 			panel.classList.toggle('ui-chat-widget-panel--open', open);
 			panel.setAttribute('aria-hidden', String(!open));
 			launcher.setAttribute('aria-expanded', String(open));
-			if (!allowedOrigin) return;
-			try {
-				iframe.contentWindow?.postMessage(
-					open ? { type: 'ui-renderer:chatWidgetOpened' } : { type: 'ui-renderer:chatWidgetClosed' },
-					allowedOrigin,
-				);
-			} catch {
-				// ignore cross-origin messaging errors
-			}
 		};
 
 		launcher.addEventListener('click', () => setOpen(true));
 		closeBtn.addEventListener('click', () => setOpen(false));
 		window.addEventListener('keydown', (e) => { if (e.key === 'Escape') setOpen(false); });
 
-		window.addEventListener('message', (event) => {
-			if (!allowedOrigin) return;
-			if (event.origin !== allowedOrigin) return;
-			const data = event.data;
-			if (!data || typeof data !== 'object') return;
+			function getSessionId() {
+				const urlKey = String(${JSON.stringify(context.chatWidget.url)});
+				let h = 0;
+				for (let i = 0; i < urlKey.length; i++) h = (h * 31 + urlKey.charCodeAt(i)) >>> 0;
+				const key = 'ui-renderer-chat-session-' + h;
+				try {
+					const existing = localStorage.getItem(key);
+					if (existing) return existing;
+				} catch {}
+				const next = 's_' + Math.random().toString(36).slice(2) + '_' + Date.now().toString(36);
+				try { localStorage.setItem(key, next); } catch {}
+				return next;
+			}
 
-			if (data.type === 'ui-renderer:chatWidgetOpen') setOpen(true);
-			if (data.type === 'ui-renderer:chatWidgetClose') setOpen(false);
-		});
+			function escapeHtml(s) {
+				return String(s ?? '')
+					.replace(/&/g, '&amp;')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;')
+					.replace(/"/g, '&quot;')
+					.replace(/'/g, '&#39;');
+			}
+
+			function appendMessage(role, text) {
+				const row = document.createElement('div');
+				row.className = 'ui-chat-widget-row ' + (role === 'user' ? 'ui-chat-widget-row--user' : 'ui-chat-widget-row--assistant');
+				const bubble = document.createElement('div');
+				bubble.className = 'ui-chat-widget-bubble ' + (role === 'user' ? 'ui-chat-widget-bubble--user' : '');
+				bubble.innerHTML = escapeHtml(text);
+				row.appendChild(bubble);
+				messages.appendChild(row);
+				messages.scrollTop = messages.scrollHeight;
+			}
+
+			function pickAssistantText(data) {
+				if (data === null || data === undefined) return '';
+				if (typeof data === 'string' || typeof data === 'number' || typeof data === 'boolean') return String(data);
+				if (Array.isArray(data)) {
+					for (const item of data) {
+						const t = pickAssistantText(item);
+						if (t) return t;
+					}
+					return '';
+				}
+				if (typeof data === 'object') {
+					if (typeof data.reply === 'string') return data.reply;
+					if (typeof data.message === 'string') return data.message;
+					if (typeof data.answer === 'string') return data.answer;
+					if (typeof data.text === 'string') return data.text;
+					if (typeof data.output === 'string') return data.output;
+				}
+				try { return JSON.stringify(data); } catch { return String(data); }
+			}
+
+			let isLoading = false;
+			form.addEventListener('submit', async (e) => {
+				e.preventDefault();
+				if (isLoading) return;
+
+				const text = String(input.value ?? '').trim();
+				if (!text) return;
+
+				input.value = '';
+				appendMessage('user', text);
+				isLoading = true;
+				sendBtn.disabled = true;
+				const prevBtnText = sendBtn.textContent;
+				sendBtn.textContent = '…';
+
+				try {
+					const sessionId = getSessionId();
+					const res = await fetch(${JSON.stringify(context.chatWidget.url)}, {
+						method: 'POST',
+						mode: 'cors',
+						credentials: 'omit',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							sessionId,
+							message: text,
+							chatInput: text,
+						}),
+					});
+
+					let assistantText = '';
+					try {
+						const data = await res.json();
+						assistantText = pickAssistantText(data);
+					} catch {
+						assistantText = await res.text();
+					}
+
+					if (!assistantText) assistantText = '(No response)';
+					appendMessage('assistant', assistantText);
+				} catch (err) {
+					appendMessage('assistant', 'Chat request failed. Please try again.');
+				} finally {
+					isLoading = false;
+					sendBtn.disabled = false;
+					sendBtn.textContent = prevBtnText;
+					setTimeout(() => input.focus(), 50);
+				}
+			});
 
 		setOpen(false);
 	})();
