@@ -87,6 +87,27 @@ You can rename those fields via:
 }
 ```
 
+## Chat widget (LLM iframe embed)
+If you already have a public chat UI URL (for example an n8n public chat page), you can enable a floating chat icon on the rendered HTML page.
+
+When enabled:
+- a chat icon is shown on the page
+- clicking the icon opens an iframe containing your public chat URL
+- closing is handled by the widget UI (and your iframe can also trigger open/close via `postMessage`)
+
+Settings:
+- `Chat Widget (iframe embed) → Enable Chat Widget`
+- `Chat Widget (iframe embed) → Public Chat URL (iframe src)`
+- `Chat Widget (iframe embed) → Chat Widget Height (px)`
+
+PostMessage integration (optional):
+- Sent to the iframe by the renderer:
+  - `ui-renderer:chatWidgetOpened`
+  - `ui-renderer:chatWidgetClosed`
+- If your embedded chat UI listens to messages, you can also control the widget:
+  - `ui-renderer:chatWidgetOpen`
+  - `ui-renderer:chatWidgetClose`
+
 ## Safety
 - Dynamic values are HTML-escaped by default (safer for untrusted data).
 - If you enable `Advanced — Allow Unsafe HTML`, you allow raw HTML injection. Only use it with trusted content.

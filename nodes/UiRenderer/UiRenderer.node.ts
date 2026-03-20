@@ -111,6 +111,7 @@ const BASE_PROPERTIES: INodeProperties[] = [
 			{ name: 'Chart', value: 'chart' },
 			{ name: 'Section Text', value: 'sectionText' },
 			{ name: 'Chat', value: 'chat' },
+			{ name: 'LLM Chat (iframe embed)', value: 'chatEmbed' },
 		],
 	},
 	{
@@ -225,6 +226,23 @@ const BASE_PROPERTIES: INodeProperties[] = [
 		default: 'system',
 		description: 'Value used in roleField for system messages.',
 		displayOptions: { show: { templateType: ['chat'], pageCompositionMode: ['single'] } },
+	},
+	{
+		displayName: 'Chat Embed — Public URL',
+		name: 'chatEmbedUrl',
+		type: 'string',
+		default: '',
+		description: 'Public URL to embed (iframe src). Must be http/https.',
+		displayOptions: { show: { templateType: ['chatEmbed'], pageCompositionMode: ['single'] } },
+	},
+	{
+		displayName: 'Chat Embed — Height (px)',
+		name: 'chatEmbedHeight',
+		type: 'number',
+		default: 680,
+		typeOptions: { minValue: 200, maxValue: 1200 },
+		description: 'Iframe height in pixels.',
+		displayOptions: { show: { templateType: ['chatEmbed'], pageCompositionMode: ['single'] } },
 	},
 	{
 		displayName: 'Theme',
@@ -550,6 +568,53 @@ const BASE_PROPERTIES: INodeProperties[] = [
 				type: 'boolean',
 				default: true,
 				description: 'Whether to render the KPI summary cards',
+			},
+		],
+	},
+	{
+		displayName: 'Chat Widget (iframe embed)',
+		name: 'chatWidgetUi',
+		type: 'collection',
+		placeholder: 'Add option',
+		default: {},
+		description: 'Optional chat launcher icon that opens an embedded public chat in an iframe.',
+		displayOptions: { show: { uxConfigMode: ['pro'] } },
+		options: [
+			{
+				displayName: 'Enable Chat Widget',
+				name: 'enabled',
+				type: 'boolean',
+				default: false,
+				description: 'Shows a chat icon on the page and opens the iframe when clicked.',
+			},
+			{
+				displayName: 'Public Chat URL (iframe src)',
+				name: 'url',
+				type: 'string',
+				default: '',
+				description: 'Public https/http URL to embed (must be http/https).',
+			},
+			{
+				displayName: 'Chat Widget Height (px)',
+				name: 'height',
+				type: 'number',
+				default: 680,
+				typeOptions: { minValue: 200, maxValue: 1200 },
+				description: 'Iframe height in pixels.',
+			},
+			{
+				displayName: 'Launcher Aria Label',
+				name: 'launcherAriaLabel',
+				type: 'string',
+				default: 'Open chat',
+				description: 'Accessibility label for the chat icon button.',
+			},
+			{
+				displayName: 'Launcher Title',
+				name: 'launcherTitle',
+				type: 'string',
+				default: 'Chat',
+				description: 'Title displayed in the chat widget header.',
 			},
 		],
 	},
@@ -1200,6 +1265,21 @@ export class UiRenderer implements INodeType {
 				footerText: uxConfigMode === 'pro' && proFooterText !== '' ? proFooterText : legacyFooterText,
 			};
 
+			const chatWidgetUi = this.getNodeParameter('chatWidgetUi', firstIndex, {}) as JsonObject;
+			const rawChatWidgetEnabled = Boolean((chatWidgetUi as JsonObject).enabled ?? false);
+			const rawChatWidgetUrl = asString((chatWidgetUi as JsonObject).url, '');
+			const resolvedChatWidgetHeight = clampNumber(Number((chatWidgetUi as JsonObject).height ?? 680), 200, 1200);
+			const resolvedChatWidgetLauncherAriaLabel = asString((chatWidgetUi as JsonObject).launcherAriaLabel, 'Open chat');
+			const resolvedChatWidgetLauncherTitle = asString((chatWidgetUi as JsonObject).launcherTitle, 'Chat');
+			const chatWidgetConfig: IChatWidgetConfig = {
+				enabled: rawChatWidgetEnabled,
+				url: rawChatWidgetUrl,
+				height: resolvedChatWidgetHeight,
+				launcherAriaLabel: resolvedChatWidgetLauncherAriaLabel,
+				launcherTitle: resolvedChatWidgetLauncherTitle,
+				allowedOrigin: '',
+			};
+
 			const tableColumnsValues = this.getNodeParameter('tableColumnsUi.tableColumnsValues', firstIndex, []) as JsonObject[];
 			const tableColumns = Array.isArray(tableColumnsValues)
 				? tableColumnsValues
@@ -1521,6 +1601,7 @@ export class UiRenderer implements INodeType {
 					dataMappingConfig,
 					styleConfig,
 					advancedConfig,
+					chatWidgetConfig,
 				});
 
 				const outputItem: INodeExecutionData = {
@@ -1560,6 +1641,7 @@ export class UiRenderer implements INodeType {
 					dataMappingConfig,
 					styleConfig,
 					advancedConfig,
+					chatWidgetConfig,
 				});
 				const nextItem: INodeExecutionData = {
 					json: {
@@ -1602,9 +1684,19 @@ interface IRenderContextInput {
 	dataMappingConfig: JsonObject;
 	styleConfig: JsonObject;
 	advancedConfig: JsonObject;
+	chatWidgetConfig: IChatWidgetConfig;
 	allItems?: INodeExecutionData[];
 	compositionMode?: 'single' | 'multi';
 	blocks?: Array<IRenderBlockConfig>;
+}
+
+interface IChatWidgetConfig {
+	enabled: boolean;
+	url: string;
+	height: number;
+	launcherAriaLabel: string;
+	launcherTitle: string;
+	allowedOrigin: string;
 }
 
 interface IRenderContext {
@@ -1625,6 +1717,7 @@ interface IRenderContext {
 	allowUnsafeHtml: boolean;
 	customCss: string;
 	includeMeta: boolean;
+	chatWidget: IChatWidgetConfig;
 	warnings: string[];
 	placeholderMeta: JsonObject;
 	blockTitle?: string;
@@ -1646,6 +1739,22 @@ function buildRenderContext(input: IRenderContextInput): IRenderContext {
 	const includeMeta = Boolean(input.advancedConfig.includeMeta ?? true);
 	const placeholderMeta: JsonObject = { generatedAt: new Date().toISOString() };
 	const placeholderStats: JsonObject = { count: normalizedItems.length };
+
+	const resolvedChatWidgetUrl = sanitizeUrl(asString(input.chatWidgetConfig.url, ''), warnings);
+	let resolvedChatWidgetAllowedOrigin = '';
+	if (resolvedChatWidgetUrl) {
+		try {
+			resolvedChatWidgetAllowedOrigin = new URL(resolvedChatWidgetUrl).origin;
+		} catch {
+			resolvedChatWidgetAllowedOrigin = '';
+		}
+	}
+	const chatWidget: IChatWidgetConfig = {
+		...input.chatWidgetConfig,
+		enabled: Boolean(input.chatWidgetConfig.enabled) && resolvedChatWidgetUrl !== '',
+		url: resolvedChatWidgetUrl,
+		allowedOrigin: resolvedChatWidgetAllowedOrigin,
+	};
 	const style = buildStyleConfig(input.styleConfig, input.preset, {
 		theme: input.theme,
 		layoutDensity: input.layoutDensity,
@@ -1686,6 +1795,7 @@ function buildRenderContext(input: IRenderContextInput): IRenderContext {
 		allowUnsafeHtml,
 		customCss,
 		includeMeta,
+		chatWidget,
 		warnings,
 		placeholderMeta,
 	};
@@ -1801,11 +1911,14 @@ function buildHtmlDocument(context: IRenderContext): string {
 		.ui-logo { max-height: 38px; max-width: 140px; }
 		@media (max-width: 720px) { main { padding: 12px; } .ui-card { margin-bottom: 12px; } .ui-title-block h1 { font-size: 1.2rem; } }
 		${buildPresetCss(context)}
+		${context.chatWidget.enabled ? buildChatWidgetCss(context) : ''}
 		${context.customCss}
 	</style>
 </head>
 <body data-preset="${escapeHtmlStrict(context.presetName)}">
 	<main>${sections}</main>
+	${context.chatWidget.enabled ? renderChatWidgetEmbed(context) : ''}
+	${context.chatWidget.enabled ? buildChatWidgetEmbedScript(context) : ''}
 </body>
 </html>`;
 }
@@ -2474,6 +2587,165 @@ function buildPresetCss(context: IRenderContext): string {
 	}
 
 	return css;
+}
+
+function buildChatWidgetCss(context: IRenderContext): string {
+	return `
+		.ui-chat-widget-launcher {
+			position: fixed;
+			right: 18px;
+			bottom: 18px;
+			width: 56px;
+			height: 56px;
+			border-radius: 999px;
+			border: none;
+			background: var(--ui-accent);
+			box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			cursor: pointer;
+			z-index: 9999;
+		}
+		.ui-chat-widget-launcher:focus { outline: 2px solid rgba(255,255,255,0.6); outline-offset: 3px; }
+		.ui-chat-widget-panel {
+			position: fixed;
+			right: 18px;
+			bottom: 86px;
+			width: min(420px, 92vw);
+			height: ${context.chatWidget.height}px;
+			max-height: calc(100vh - 110px);
+			border-radius: calc(var(--ui-radius) + 8px);
+			background: var(--ui-card-bg);
+			color: var(--ui-text);
+			border: 1px solid rgba(148, 163, 184, 0.35);
+			box-shadow: 0 16px 40px rgba(15,23,42,0.14);
+			z-index: 9999;
+			display: none;
+			flex-direction: column;
+			overflow: hidden;
+		}
+		.ui-chat-widget-panel--open { display: flex; }
+		.ui-chat-widget-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 12px 12px;
+			background: rgba(148, 163, 184, 0.10);
+			border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+		}
+		.ui-chat-widget-title {
+			font-weight: 800;
+			font-size: 0.95rem;
+		}
+		.ui-chat-widget-close {
+			width: 34px;
+			height: 34px;
+			border-radius: 999px;
+			border: none;
+			background: rgba(148, 163, 184, 0.22);
+			color: var(--ui-text);
+			cursor: pointer;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+		}
+		.ui-chat-widget-iframe {
+			border: none;
+			width: 100%;
+			height: 100%;
+			background: transparent;
+		}
+	`;
+}
+
+function renderChatWidgetEmbed(context: IRenderContext): string {
+	const safeAria = escapeHtmlStrict(context.chatWidget.launcherAriaLabel || 'Open chat');
+	const safeTitle = escapeHtmlStrict(context.chatWidget.launcherTitle || 'Chat');
+
+	return `
+	<button
+		type="button"
+		class="ui-chat-widget-launcher"
+		id="ui-chat-widget-launcher"
+		aria-label="${safeAria}"
+		aria-controls="ui-chat-widget-panel"
+		aria-expanded="false"
+	>
+		<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+			<path d="M7 7.5C7 6.11929 8.11929 5 9.5 5H18.5C19.8807 5 21 6.11929 21 7.5V14C21 15.3807 19.8807 16.5 18.5 16.5H12.2L8.3 19.5V16.5H9.5C8.11929 16.5 7 15.3807 7 14V7.5Z" stroke="white" stroke-width="1.8" stroke-linejoin="round"/>
+			<path d="M3.5 4.5H4.2" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+		</svg>
+	</button>
+
+	<div class="ui-chat-widget-panel" id="ui-chat-widget-panel" aria-hidden="true">
+		<div class="ui-chat-widget-header">
+			<div class="ui-chat-widget-title">${safeTitle}</div>
+			<button type="button" class="ui-chat-widget-close" id="ui-chat-widget-close" aria-label="Close chat">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+					<path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+					<path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+				</svg>
+			</button>
+		</div>
+		<iframe
+			id="ui-chat-widget-iframe"
+			class="ui-chat-widget-iframe"
+			src="${escapeHtmlStrict(context.chatWidget.url)}"
+			loading="lazy"
+			sandbox="allow-scripts allow-forms allow-popups allow-modals"
+			referrerpolicy="no-referrer"
+		></iframe>
+	</div>
+	`;
+}
+
+function buildChatWidgetEmbedScript(context: IRenderContext): string {
+	const allowedOrigin = context.chatWidget.allowedOrigin ? escapeJsString(context.chatWidget.allowedOrigin) : '';
+	return `
+	<script>
+	(() => {
+		const launcher = document.getElementById('ui-chat-widget-launcher');
+		const panel = document.getElementById('ui-chat-widget-panel');
+		const closeBtn = document.getElementById('ui-chat-widget-close');
+		const iframe = document.getElementById('ui-chat-widget-iframe');
+		if (!launcher || !panel || !closeBtn || !iframe) return;
+
+		const allowedOrigin = ${allowedOrigin ? `'${allowedOrigin}'` : "''"};
+
+		const setOpen = (open) => {
+			panel.classList.toggle('ui-chat-widget-panel--open', open);
+			panel.setAttribute('aria-hidden', String(!open));
+			launcher.setAttribute('aria-expanded', String(open));
+			if (!allowedOrigin) return;
+			try {
+				iframe.contentWindow?.postMessage(
+					open ? { type: 'ui-renderer:chatWidgetOpened' } : { type: 'ui-renderer:chatWidgetClosed' },
+					allowedOrigin,
+				);
+			} catch {
+				// ignore cross-origin messaging errors
+			}
+		};
+
+		launcher.addEventListener('click', () => setOpen(true));
+		closeBtn.addEventListener('click', () => setOpen(false));
+		window.addEventListener('keydown', (e) => { if (e.key === 'Escape') setOpen(false); });
+
+		window.addEventListener('message', (event) => {
+			if (!allowedOrigin) return;
+			if (event.origin !== allowedOrigin) return;
+			const data = event.data;
+			if (!data || typeof data !== 'object') return;
+
+			if (data.type === 'ui-renderer:chatWidgetOpen') setOpen(true);
+			if (data.type === 'ui-renderer:chatWidgetClose') setOpen(false);
+		});
+
+		setOpen(false);
+	})();
+	</script>
+	`;
 }
 
 function unionObjectKeys(items: JsonObject[]): string[] {
