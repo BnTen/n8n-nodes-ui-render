@@ -1,6 +1,7 @@
-# n8n-nodes-ui-render
-
+# UI Render
 ![UI Render banner](icons/demo-header.png)
+
+# n8n-nodes-ui-render
 
 Turn your n8n data into clean, good-looking HTML reports (tables, charts, timelines, and even a chat-style UI).
 
