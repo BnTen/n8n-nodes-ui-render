@@ -7,29 +7,29 @@ This node sits between your data workflow and `Respond to Webhook`, so you can s
 ![UI Render preview](icons/demo.png)
 
 ## What it renders
-Vous pouvez générer une page HTML “prête à partager” depuis vos données n8n. Selon le `Template Type`, le rendu peut être :
+You can generate share-ready HTML pages from your n8n workflow data. Depending on the `Template Type`, the renderer can output:
 
-- `table` : tableau responsive
-- `list` : liste en cartes
-- `chart` : `bar`, `line`, `pie`, + `donut` et `polar`
-- `sectionText` : une section “titre + paragraphe” (avec placeholders)
-- `chat` : une UI de chat à partir d’un tableau de messages
+- `table` — responsive HTML table
+- `list` — card-based list
+- `chart` — `bar`, `line`, `pie`, plus `donut` and `polar`
+- `sectionText` — a “title + paragraph” section (supports placeholders)
+- `chat` — a chat UI rendered from an array of messages
 
-## Presets (le look & la mise en page)
-Les presets ne changent pas juste les couleurs : ils ajustent aussi l’espacement, la typographie et parfois la layout.
+## Presets (global look & layout)
+Presets don’t only change colors. They also tune global spacing, typography, and a few layout behaviors:
 
-- `ExecutiveDashboard` : neutre, clean, “rapport business”
-- `SalesReport` : header centré et style plus “sérieux”
-- `OpsTable` : si tu mets plusieurs blocs `chart` à la suite, ils sont regroupés en grille
-- `ActivityFeed` : transforme les blocs `list` en timeline
+- `ExecutiveDashboard` — clean, neutral “business report” look
+- `SalesReport` — centered header with a more serious feel
+- `OpsTable` — consecutive `chart` blocks are grouped into a responsive grid
+- `ActivityFeed` — `list` blocks become a timeline layout
 
-### Tips pour un rendu “grey / neutre”
-- Garde `Theme = light` et évite de surcharger les couleurs : laisse le preset faire le travail.
-- Mets `Layout Density = comfortable` pour éviter les cartes trop proches.
-- Laisse `Style — Accent Color / Background Color / Text Color` vides si tu veux un rendu cohérent “preset-first”.
+### Tips for a neutral / grey-first layout
+- Keep `Theme = light` and avoid heavy overrides—let the preset lead the look.
+- Set `Layout Density = comfortable` to prevent cards from feeling cramped.
+- Leave `Style — Accent Color / Background Color / Text Color` empty to keep a consistent preset-first theme.
 
 ## Quick setup n8n (Webhook -> UI Render -> Respond to Webhook)
-Le flow standard :
+The standard flow is:
 
 ```mermaid
 flowchart TD
@@ -38,61 +38,61 @@ flowchart TD
   U --> R[Respond to Webhook]
 ```
 
-Ensuite, dans `Respond to Webhook` :
-- Body : `{{$json.html}}`
-- Header : `Content-Type: text/html; charset=utf-8`
+Then, in `Respond to Webhook`:
+- Body: `{{$json.html}}`
+- Header: `Content-Type: text/html; charset=utf-8`
 
-## Placeholders (rapides à utiliser)
-Dans les champs texte (titre, subtitle, sectionText, etc.) :
+## Placeholders (quick to use)
+Use them in text fields (title, subtitle, sectionText, etc.):
 
 - `{{item.field}}`
 - `{{meta.generatedAt}}`
 - `{{stats.count}}`
 
-## Charts : mapping (donut / polar inclus)
-Pour n’importe quel type de chart (`bar`, `donut`, `polar`, etc.), tu configures :
-- Labels mode : `field` ou `array`
-- Values mode : `field` ou `array`
+## Charts: mapping (donut / polar included)
+For any chart type (`bar`, `donut`, `polar`, etc.), configure:
+- Labels mode: `field` or `array`
+- Values mode: `field` or `array`
 
-Puis :
-- Labels : `chartLabelField` ou `chartLabelsArray`
-- Values : `chartValueField` ou `chartValuesArray`
+Then set:
+- Labels: `chartLabelField` or `chartLabelsArray`
+- Values: `chartValueField` or `chartValuesArray`
 
-## Multi-block (mode “dashboard builder”)
-Quand `Page Composition Mode = Multi Blocks`, tu empiles plusieurs blocs sur la même page.
+## Multi-block layout (dashboard builder mode)
+When `Page Composition Mode = Multi Blocks`, you can stack multiple blocks on the same page:
 
-- Types de blocs : `table`, `list`, `chart`, `text`
-- L’ordre que tu mets dans `Blocks` est l’ordre réel à l’écran
+- Block types: `table`, `list`, `chart`, `text`
+- The order you define in `Blocks` is the order users see on the page
 
-Et pour `OpsTable` :
-- si tu mets plusieurs blocs `chart` qui se suivent, ils partent dans une **grille** (pratique pour un “dashboard ops”).
+Preset behavior:
+- `OpsTable`: if you place consecutive `chart` blocks, they are grouped into a **responsive grid** (great for an “ops dashboard”).
 
 ## Chat template
-Pour `Template Type = chat`, le node lit un tableau de messages dans ton item.
+For `Template Type = chat`, the node reads an array of messages from your input item.
 
-Par défaut, il attend :
+By default, it expects:
 - `messages` = array
-- chaque message : `role`, `content`, et un `timestamp` optionnel
+- each message has: `role`, `content`, and an optional `timestamp`
 
-Tu peux renommer les champs via :
+You can rename those fields via:
 - `Chat — Messages Field`
 - `Chat — Role Field`
 - `Chat — Content Field`
 - `Chat — Timestamp Field`
 
-### Exemple de payload chat
+### Example chat payload
 ```json
 {
   "messages": [
-    { "role": "user", "content": "Hello !", "timestamp": "2026-03-20 08:33" },
-    { "role": "assistant", "content": "Hi ! Voici le dashboard ops.", "timestamp": "2026-03-20 08:34" }
+    { "role": "user", "content": "Hello!", "timestamp": "2026-03-20 08:33" },
+    { "role": "assistant", "content": "Hi! Here is the ops dashboard.", "timestamp": "2026-03-20 08:34" }
   ]
 }
 ```
 
 ## Safety
-- Par défaut, les valeurs dynamiques sont échappées HTML (plus safe).
-- Si tu actives `Advanced — Allow Unsafe HTML`, tu autorises l’injection HTML brute. À utiliser seulement avec des contenus de confiance.
+- Dynamic values are HTML-escaped by default (safer for untrusted data).
+- If you enable `Advanced — Allow Unsafe HTML`, you allow raw HTML injection. Only use it with trusted content.
 
 ## License
 MIT
