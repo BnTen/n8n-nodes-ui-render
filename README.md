@@ -1,4 +1,3 @@
-# UI Render
 ![UI Render banner](icons/demo-header.png)
 
 # n8n-nodes-ui-render
