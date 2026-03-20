@@ -1,0 +1,13 @@
+{
+	"node": "n8n-nodes-ui-render",
+	"nodeVersion": "2.0",
+	"codexVersion": "1.0",
+	"categories": ["Development", "Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://github.com/benjaminprouff/n8n-nodes-ui-render/blob/main/README.md"
+			}
+		]
+	}
+}

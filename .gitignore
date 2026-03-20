@@ -1,2 +1,34 @@
-dist
-node_modules
+## Dependencies
+node_modules/
+
+## Build output
+dist/
+
+## Local / generated archives
+*.tgz
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+## IDE / editor
+.vscode/
+.cursor/
+.idea/
+
+## OS files
+.DS_Store
+Thumbs.db
+
+## Logs / coverage
+coverage/
+*.lcov
+*.log
+
+## Env / secrets
+.env
+.env.*
+*.env
+.npmrc
+
+## n8n credentials/templates that should not be pushed
+credentials/
