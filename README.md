@@ -31,12 +31,7 @@ Presets don’t only change colors. They also tune global spacing, typography, a
 ## Quick setup n8n (Webhook -> UI Render -> Respond to Webhook)
 The standard flow is:
 
-```mermaid
-flowchart TD
-  W[Webhook] --> D[Data Nodes]
-  D --> U[UI Render]
-  U --> R[Respond to Webhook]
-```
+![Webhook -> UI Render -> Respond to Webhook](icons/demo-webhook.png)
 
 Then, in `Respond to Webhook`:
 - Body: `{{$json.html}}`
