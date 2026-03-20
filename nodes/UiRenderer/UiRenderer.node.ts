@@ -2887,7 +2887,7 @@ function buildChatWidgetEmbedScript(context: IRenderContext): string {
 				s = s.replace(/(^|\\s)\\*([^*]+)\\*(?=\\s|$)/g, (_m, p1, g1) => p1 + '<em>' + g1 + '</em>');
 
 				// Links: [text](url)
-				s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
+				s = s.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, (_m, label, url) => {
 					const safeUrl = String(url ?? '').trim();
 					return '<a href="' + escapeHtml(safeUrl) + '">' + label + '</a>';
 				});
