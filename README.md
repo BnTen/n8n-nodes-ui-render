@@ -90,4 +90,4 @@ You can rename those fields via:
 - If you enable `Advanced — Allow Unsafe HTML`, you allow raw HTML injection. Only use it with trusted content.
 
 ## License
-MIT
+MIT — see [LICENSE.md](LICENSE.md)
