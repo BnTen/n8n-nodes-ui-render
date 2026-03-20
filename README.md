@@ -31,14 +31,11 @@ Les presets ne changent pas juste les couleurs : ils ajustent aussi l’espaceme
 ## Quick setup n8n (Webhook -> UI Render -> Respond to Webhook)
 Le flow standard :
 
-```text
-[Webhook]
-   |
-   v
-[Data Nodes] -> [UI Render]
-   |
-   v
-[Respond to Webhook]
+```mermaid
+flowchart TD
+  W[Webhook] --> D[Data Nodes]
+  D --> U[UI Render]
+  U --> R[Respond to Webhook]
 ```
 
 Ensuite, dans `Respond to Webhook` :
