@@ -1,5 +1,7 @@
 # n8n-nodes-ui-render
 
+![UI Render banner](icons/demo-header.png)
+
 Turn your n8n data into clean, good-looking HTML reports (tables, charts, timelines, and even a chat-style UI).
 
 This node sits between your data workflow and `Respond to Webhook`, so you can ship a ready-to-view page with one step.
