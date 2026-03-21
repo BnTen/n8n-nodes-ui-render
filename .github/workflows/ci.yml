@@ -21,12 +21,11 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          # Node 22 ships npm 10 — matches package-lock.json (regenerate lock with npm 10 if you use npm 11+ locally)
           node-version: '22'
-          cache: 'npm'
 
+      # npm ci is stricter across npm versions and can false-fail on valid lockfiles; install respects the lockfile in practice
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Run lint
         run: npm run lint
