@@ -1,0 +1,5 @@
+{
+	"_readme": "Map Section Text fields in the node, e.g. Title: {{item.summaryTitle}} | Paragraph: Period {{item.period}} — {{stats.count}} rows at {{meta.generatedAt}}",
+	"summaryTitle": "Executive summary",
+	"period": "Q1 2026"
+}

@@ -1,0 +1,5 @@
+{
+	"title": "API latency spike",
+	"detail": "p95 > 2s — mitigated",
+	"status": "resolved"
+}

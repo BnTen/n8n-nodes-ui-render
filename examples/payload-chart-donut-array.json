@@ -1,0 +1,5 @@
+{
+	"_readme": "For Chart: set Labels mode = array, Values mode = array. Paste the string values below into UI Render node fields (not item JSON).",
+	"chartLabelsArray": "[\"Product A\", \"Product B\", \"Other\"]",
+	"chartValuesArray": "[45, 35, 20]"
+}

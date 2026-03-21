@@ -1,0 +1,7 @@
+{
+	"rows": [
+		{ "deal": "Acme Corp", "owner": "Alex", "stage": "Negotiation", "amount": 12000 },
+		{ "deal": "Globex", "owner": "Sam", "stage": "Qualified", "amount": 5400 },
+		{ "deal": "Initech", "owner": "Alex", "stage": "Closed", "amount": 8900 }
+	]
+}

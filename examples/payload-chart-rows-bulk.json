@@ -1,0 +1,7 @@
+{
+	"rows": [
+		{ "region": "EMEA", "revenue": 42000 },
+		{ "region": "AMER", "revenue": 61000 },
+		{ "region": "APAC", "revenue": 28000 }
+	]
+}
