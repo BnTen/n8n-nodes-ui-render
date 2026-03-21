@@ -50,7 +50,7 @@
 		]
 	},
 	"devDependencies": {
-		"@eslint/js": "^10.0.1",
+		"@eslint/js": "9.39.4",
 		"@n8n/node-cli": "*",
 		"eslint": "9.39.4",
 		"prettier": "3.8.1",

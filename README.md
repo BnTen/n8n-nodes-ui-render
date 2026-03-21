@@ -28,6 +28,8 @@ Restart n8n after installation.
 
 ## What it renders
 
+![UI Render — multi-block dashboard example (charts, table, text)](icons/demo.png)
+
 Depending on **Template Type**:
 
 - `table` — responsive HTML table  
