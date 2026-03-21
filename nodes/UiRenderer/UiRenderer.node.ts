@@ -2815,165 +2815,12 @@ function buildChatWidgetEmbedScript(context: IRenderContext): string {
 					.replace(/'/g, '&#39;');
 			}
 
-			function sanitizeHtml(html) {
-				try {
-					const parser = new DOMParser();
-					const doc = parser.parseFromString(String(html ?? ''), 'text/html');
-					const allowedTags = new Set([
-						'B',
-						'STRONG',
-						'I',
-						'EM',
-						'DEL',
-						'CODE',
-						'PRE',
-						'P',
-						'BR',
-						'UL',
-						'OL',
-						'LI',
-						'A',
-						'H1',
-						'H2',
-						'H3',
-						'H4',
-						'BLOCKQUOTE',
-						'HR',
-					]);
-
-					const elements = Array.from(doc.body.getElementsByTagName('*'));
-					for (const el of elements) {
-						const tag = el.tagName.toUpperCase();
-						if (!allowedTags.has(tag)) {
-							const text = doc.createTextNode(el.textContent ?? '');
-							el.replaceWith(text);
-							continue;
-						}
-
-						// Remove unsafe attributes (events, styles, etc.)
-						for (const attr of Array.from(el.attributes)) {
-							const name = attr.name.toLowerCase();
-							if (name.startsWith('on')) el.removeAttribute(attr.name);
-							if (name === 'style') el.removeAttribute(attr.name);
-						}
-
-						// Link hardening
-						if (tag === 'A') {
-							const href = el.getAttribute('href') ?? '';
-							const safe =
-								/^https?:\/\//i.test(href) || /^mailto:/i.test(href) || /^\/\//.test(href) || /^\/[^/]/.test(href);
-							if (!safe) el.removeAttribute('href');
-							el.setAttribute('target', '_blank');
-							el.setAttribute('rel', 'noopener noreferrer');
-						}
-					}
-
-					return doc.body.innerHTML;
-				} catch {
-					return escapeHtml(html);
-				}
-			}
-
-			function inlineMarkdownFormat(escapedText) {
-				let s = String(escapedText ?? '');
-				const bt = String.fromCharCode(96); // backtick character
-				// Inline code
-				s = s.replace(new RegExp(bt + '([^' + bt + ']+)' + bt, 'g'), (_m, g1) => '<code>' + g1 + '</code>');
-				// Bold
-				s = s.replace(/\*\*([^*]+)\*\*/g, (_m, g1) => '<strong>' + g1 + '</strong>');
-				// Strikethrough
-				s = s.replace(/~~([^~]+)~~/g, (_m, g1) => '<del>' + g1 + '</del>');
-				// Italic (simple, limited)
-				s = s.replace(/(^|\\s)\\*([^*]+)\\*(?=\\s|$)/g, (_m, p1, g1) => p1 + '<em>' + g1 + '</em>');
-
-				// Links: [text](url)
-				s = s.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, (_m, label, url) => {
-					const safeUrl = String(url ?? '').trim();
-					return '<a href="' + escapeHtml(safeUrl) + '">' + label + '</a>';
-				});
-
-				return s;
-			}
-
-			function markdownToHtml(md) {
-				const raw = String(md ?? '').replace(/\r\n/g, '\n');
-				const lines = raw.split('\n');
-				const htmlParts = [];
-				let ulItems: string[] | null = null;
-				let paragraph: string[] = [];
-
-				const flushParagraph = () => {
-					if (paragraph.length === 0) return;
-					const joined = paragraph.join('\n');
-					const escaped = escapeHtml(joined).replace(/\n/g, '<br/>');
-					htmlParts.push('<p>' + inlineMarkdownFormat(escaped) + '</p>');
-					paragraph = [];
-				};
-
-				const flushUl = () => {
-					if (!ulItems || ulItems.length === 0) return;
-					htmlParts.push('<ul>' + ulItems.join('') + '</ul>');
-					ulItems = null;
-				};
-
-				for (const line of lines) {
-					const trimmed = line.trim();
-					if (trimmed === '') {
-						flushParagraph();
-						flushUl();
-						continue;
-					}
-
-					// Headings
-					const h = /^(#{1,4})\\s+(.*)$/.exec(trimmed);
-					if (h) {
-						flushParagraph();
-						flushUl();
-						const level = h[1].length;
-						const text = h[2];
-						const escaped = escapeHtml(text);
-						htmlParts.push('<h' + level + '>' + inlineMarkdownFormat(escaped) + '</h' + level + '>');
-						continue;
-					}
-
-					// List items
-					const li = /^[-*•]\\s+(.*)$/.exec(trimmed);
-					if (li) {
-						flushParagraph();
-						if (!ulItems) ulItems = [];
-						const text = li[1];
-						const escaped = escapeHtml(text);
-						ulItems.push('<li>' + inlineMarkdownFormat(escaped) + '</li>');
-						continue;
-					}
-
-					// Regular paragraph line
-					paragraph.push(trimmed);
-				}
-
-				flushParagraph();
-				flushUl();
-				return htmlParts.join('');
-			}
-
-			function renderAssistantText(text) {
-				const raw = String(text ?? '');
-				// If the backend already returns HTML, render it (sanitized).
-				const looksLikeHtml = /<\/?[a-z][\\s\\S]*>/i.test(raw);
-				const html = looksLikeHtml ? raw : markdownToHtml(raw);
-				return sanitizeHtml(html);
-			}
-
 			function appendMessage(role, text) {
 				const row = document.createElement('div');
 				row.className = 'ui-chat-widget-row ' + (role === 'user' ? 'ui-chat-widget-row--user' : 'ui-chat-widget-row--assistant');
 				const bubble = document.createElement('div');
 				bubble.className = 'ui-chat-widget-bubble ' + (role === 'user' ? 'ui-chat-widget-bubble--user' : '');
-				if (role === 'user') {
-					bubble.textContent = String(text ?? '');
-				} else {
-					bubble.innerHTML = renderAssistantText(text);
-				}
+				bubble.innerHTML = escapeHtml(text);
 				row.appendChild(bubble);
 				messages.appendChild(row);
 				messages.scrollTop = messages.scrollHeight;
@@ -3016,24 +2863,6 @@ function buildChatWidgetEmbedScript(context: IRenderContext): string {
 
 				try {
 					const sessionId = getSessionId();
-
-					// Typing indicator (animated "...") while waiting for the backend.
-					const typingRow = document.createElement('div');
-					typingRow.className = 'ui-chat-widget-row ui-chat-widget-row--assistant';
-					const typingBubble = document.createElement('div');
-					typingBubble.className = 'ui-chat-widget-bubble';
-					typingBubble.textContent = '...';
-					typingRow.appendChild(typingBubble);
-					messages.appendChild(typingRow);
-					messages.scrollTop = messages.scrollHeight;
-
-					let dotCount = 0;
-					const dotTimer = window.setInterval(() => {
-						dotCount = (dotCount + 1) % 4;
-						typingBubble.textContent = '.'.repeat(dotCount + 1);
-						messages.scrollTop = messages.scrollHeight;
-					}, 450);
-
 					const res = await fetch(${JSON.stringify(context.chatWidget.url)}, {
 						method: 'POST',
 						mode: 'cors',
@@ -3055,8 +2884,7 @@ function buildChatWidgetEmbedScript(context: IRenderContext): string {
 					}
 
 					if (!assistantText) assistantText = '(No response)';
-					window.clearInterval(dotTimer);
-					typingBubble.innerHTML = renderAssistantText(assistantText);
+					appendMessage('assistant', assistantText);
 				} catch (err) {
 					appendMessage('assistant', 'Chat request failed. Please try again.');
 				} finally {
