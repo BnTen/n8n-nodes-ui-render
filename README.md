@@ -168,8 +168,10 @@ npm link
 npm link n8n-nodes-ui-render
 ```
 
-Restart n8n after each **build** so it picks up `dist/`.  
+Restart n8n after each **build** so it picks up `dist/`.
 Optional: `npm run dev` / `n8n-node dev` if you use the n8n node CLI in watch mode.
+
+**Lockfile / CI:** `package-lock.json` is generated for **npm 10** (same as GitHub Actions). If you use **npm 11+** locally, run `npx npm@10 install` before pushing so `npm ci` in CI does not fail.
 
 ## Roadmap (ideas)
 

@@ -21,7 +21,8 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 'lts/*'
+          # Node 22 ships npm 10 — matches package-lock.json (regenerate lock with npm 10 if you use npm 11+ locally)
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
