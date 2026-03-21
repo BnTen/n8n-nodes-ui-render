@@ -1,10 +1,10 @@
 
 {
 	"name": "n8n-nodes-ui-render",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "n8n community node to render professional HTML from workflow data",
 	"license": "MIT",
-	"homepage": "https://github.com/benjaminprouff/n8n-nodes-ui-render",
+	"homepage": "https://github.com/BnTen/n8n-nodes-ui-render",
 	"keywords": [
 		"n8n-community-node-package",
 		"n8n",
@@ -27,7 +27,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/benjaminprouff/n8n-nodes-ui-render.git"
+		"url": "git+https://github.com/BnTen/n8n-nodes-ui-render.git"
 	},
 	"scripts": {
 		"build": "n8n-node build",
@@ -36,7 +36,7 @@
 		"lint": "n8n-node lint",
 		"lint:fix": "n8n-node lint --fix",
 		"release": "n8n-node release",
-		"prepublishOnly": "n8n-node prerelease"
+		"prepublishOnly": "npm run lint && npm run build"
 	},
 	"files": [
 		"dist"
