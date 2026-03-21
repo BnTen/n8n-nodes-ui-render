@@ -5,23 +5,6 @@
 Turn your n8n data into clean, good-looking **HTML** reports (tables, charts, timelines, and a **chat-style** transcript UI).  
 Use it between your data nodes and **Respond to Webhook** to return a full HTML page in one step.
 
-## Visuals
-
-| Preview | Description |
-|--------|-------------|
-| ![UI Render preview](icons/demo.png) | Example HTML output (table / dashboard style). |
-| ![Webhook chain](icons/demo-webhook.png) | Typical chain: receive data → render → respond with HTML. |
-
-**Preset-specific screenshots or GIFs** (ExecutiveDashboard, SalesReport, OpsTable, ActivityFeed) are welcome—open a PR under `assets/` if you want to extend this gallery.
-
-### Where the node fits (workflow)
-
-```mermaid
-flowchart LR
-  A[Webhook / data nodes] --> B[UI Render]
-  B --> C[Respond to Webhook]
-```
-
 ## Installation
 
 ### Community Nodes (recommended)
